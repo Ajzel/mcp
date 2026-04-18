@@ -38,16 +38,13 @@ async def get_agent(app: FastAPI):
         return app.state.agent
 
     try:
+        # Test with math only first - weather added back once math works
         client = MultiServerMCPClient(
             {
                 "math": {
                     "command": sys.executable,
                     "args": [str(app.state.math_server)],
                     "transport": "stdio",
-                },
-                "weather": {
-                    "url": "https://mcp-weather-0iau.onrender.com/mcp",
-                    "transport": "streamable-http",
                 },
             }
         )
