@@ -10,4 +10,5 @@ RUN pip install --no-cache-dir -r requirements.txt python-dotenv
 
 COPY . .
 
-CMD ["uvicorn", "client:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN chmod +x start.sh
+CMD ["sh", "start.sh"]
