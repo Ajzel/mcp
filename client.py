@@ -28,20 +28,21 @@ def _extract_text(agent_response: dict) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    project_root = Path(__file__).resolve().parent
-    math_server = project_root / "mathserver.py"
     app.state.agent = None
-    app.state.agent_init_error = None
+    app.state.math_server = Path(__file__).resolve().parent / "mathserver.py"
+    yield
 
-    print(f"Math server path: {math_server}")
-    print(f"Math server exists: {math_server.exists()}")
+
+async def get_agent(app: FastAPI):
+    if app.state.agent is not None:
+        return app.state.agent
 
     try:
         client = MultiServerMCPClient(
             {
                 "math": {
                     "command": sys.executable,
-                    "args": [str(math_server)],
+                    "args": [str(app.state.math_server)],
                     "transport": "stdio",
                 },
                 "weather": {
@@ -54,12 +55,10 @@ async def lifespan(app: FastAPI):
         print(f"Tools loaded: {[t.name for t in tools]}")
         model = ChatGroq(model=os.getenv("GROQ_MODEL", "qwen/qwen3-32b"))
         app.state.agent = create_react_agent(model, tools)
+        return app.state.agent
     except Exception as exc:
-        app.state.agent_init_error = str(exc)
-        print(f"Agent init error: {exc}")
         traceback.print_exc()
-
-    yield
+        raise HTTPException(status_code=500, detail=f"Agent init failed: {exc}")
 
 
 app = FastAPI(title="MCP LangChain Agent API", lifespan=lifespan)
@@ -82,13 +81,8 @@ async def ask(request: AskRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="message must not be empty")
 
-    if app.state.agent is None:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Agent not initialized: {app.state.agent_init_error}",
-        )
-
-    agent_response = await app.state.agent.ainvoke(
+    agent = await get_agent(app)
+    agent_response = await agent.ainvoke(
         {"messages": [{"role": "user", "content": request.message}]}
     )
     return {"answer": _extract_text(agent_response)}
