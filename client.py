@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -32,8 +33,11 @@ async def lifespan(app: FastAPI):
     app.state.agent = None
     app.state.agent_init_error = None
 
+    print(f"Math server path: {math_server}")
+    print(f"Math server exists: {math_server.exists()}")
+
     try:
-        client = MultiServerMCPClient(
+        async with MultiServerMCPClient(
             {
                 "math": {
                     "command": sys.executable,
@@ -45,14 +49,17 @@ async def lifespan(app: FastAPI):
                     "transport": "streamable-http",
                 },
             }
-        )
-        tools = await client.get_tools()
-        model = ChatGroq(model=os.getenv("GROQ_MODEL", "qwen/qwen3-32b"))
-        app.state.agent = create_react_agent(model, tools)
+        ) as client:
+            tools = await client.get_tools()
+            print(f"Tools loaded: {[t.name for t in tools]}")
+            model = ChatGroq(model=os.getenv("GROQ_MODEL", "qwen/qwen3-32b"))
+            app.state.agent = create_react_agent(model, tools)
+            yield
     except Exception as exc:
         app.state.agent_init_error = str(exc)
-
-    yield
+        print(f"Agent init error: {exc}")
+        traceback.print_exc()
+        yield
 
 
 app = FastAPI(title="MCP LangChain Agent API", lifespan=lifespan)
