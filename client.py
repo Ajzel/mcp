@@ -1,52 +1,87 @@
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
-from langchain_groq import ChatGroq
-
-from dotenv import load_dotenv
-load_dotenv()
-
-import asyncio
+import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-async def main():
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from langgraph.prebuilt import create_react_agent
+from langchain_groq import ChatGroq
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from pydantic import BaseModel
+
+load_dotenv()
+
+
+class AskRequest(BaseModel):
+    message: str
+
+
+def _extract_text(agent_response: dict) -> str:
+    messages = agent_response.get("messages", [])
+    if messages:
+        return getattr(messages[-1], "content", str(messages[-1]))
+    return str(agent_response)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     project_root = Path(__file__).resolve().parent
     math_server = project_root / "mathserver.py"
-    client = MultiServerMCPClient(
-        {
-            "math":{
-                "command": sys.executable,
-                "args": [str(math_server)],
-                "transport":"stdio",
+    app.state.agent = None
+    app.state.agent_init_error = None
 
-            },
-            "weather": {
-                "url":"http://localhost:8000/mcp",
-                "transport":"streamable-http",
+    try:
+        client = MultiServerMCPClient(
+            {
+                "math": {
+                    "command": sys.executable,
+                    "args": [str(math_server)],
+                    "transport": "stdio",
+                },
+                "weather": {
+                    "url": "http://localhost:8000/mcp",
+                    "transport": "streamable-http",
+                },
             }
-            
-        }
-    ) 
-    
-    import os
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
+        )
+        tools = await client.get_tools()
+        model = ChatGroq(model=os.getenv("GROQ_MODEL", "qwen/qwen3-32b"))
+        app.state.agent = create_react_agent(model, tools)
+    except Exception as exc:
+        app.state.agent_init_error = str(exc)
 
-    tools = await client.get_tools()
-    # qwen-qwq-32b was decommissioned; see https://console.groq.com/docs/deprecations
-    model = ChatGroq(model=os.getenv("GROQ_MODEL", "qwen/qwen3-32b"))
-    agent=create_react_agent(
-        model, tools
+    yield
+
+
+app = FastAPI(title="MCP LangChain Agent API", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.post("/ask")
+async def ask(request: AskRequest):
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="message must not be empty")
+
+    if app.state.agent is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Agent not initialized: {app.state.agent_init_error}",
+        )
+
+    agent_response = await app.state.agent.ainvoke(
+        {"messages": [{"role": "user", "content": request.message}]}
     )
-    
-    math_response = await agent.ainvoke(
-        {"messages":[{"role":"user","content":"What is (3+5)*12?"}]}
-    )
-    
-    print("Math Response:", math_response['messages'][-1].content)
-    
-    weather_response = await agent.ainvoke(
-        {"messages":[{"role":"user","content":"What is the weather in Bangalore?"}]}
-    )
-    print("Weather Response:", weather_response['messages'][-1].content)    
-    
-asyncio.run(main())
+    return {"answer": _extract_text(agent_response)}
