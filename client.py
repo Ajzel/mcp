@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
                     "transport": "stdio",
                 },
                 "weather": {
-                    "url": "http://localhost:8000/mcp",
+                    "url": "https://mcp-weather-0iau.onrender.com/mcp",
                     "transport": "streamable-http",
                 },
             }
