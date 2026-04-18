@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MCP LangChain deployment page">
+  <title>MCP LangChain</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --text: #e7ecff;
+      --muted: #a8b3d9;
+      --accent: #6ea8fe;
+      --accent-2: #7ef0c2;
+      --border: #25305f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, #1a2448 0%, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: min(900px, 100%);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 24px;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 12px;
+      color: var(--text);
+      background: rgba(110, 168, 254, 0.08);
+      font-size: 0.88rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: var(--accent-2);
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 0.92rem;
+    }
+
+    .tool-controls {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .tool-controls input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f1730;
+      color: var(--text);
+    }
+
+    .tool-controls button {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: var(--accent);
+      color: #0a1022;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tool-controls button.secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .result {
+      margin-top: 6px;
+      color: var(--accent-2);
+      min-height: 20px;
+      font-size: 0.9rem;
+    }
+
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      text-decoration: none;
+      color: #0a1022;
+      background: var(--accent);
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>MCP LangChain Deployment</h1>
+    <p>This page is live and ready for deployment. Your MCP-based tools and LangChain client can run behind this project.</p>
+
+    <div class="badge-row">
+      <span class="badge">Python</span>
+      <span class="badge">MCP</span>
+      <span class="badge">LangChain</span>
+      <span class="badge">LangGraph</span>
+    </div>
+
+    <section class="card-grid">
+      <article class="card">
+        <h3>Math Server</h3>
+        <p>Provides arithmetic tools via MCP stdio transport.</p>
+        <div class="tool-controls">
+          <input id="math-a" type="number" placeholder="First number" value="3">
+          <input id="math-b" type="number" placeholder="Second number" value="5">
+          <button id="add-btn" type="button">Add</button>
+          <button id="multiply-btn" type="button" class="secondary">Multiply</button>
+          <div id="math-result" class="result"></div>
+        </div>
+      </article>
+      <article class="card">
+        <h3>Weather Server</h3>
+        <p>Exposes weather tool via streamable HTTP transport.</p>
+        <div class="tool-controls">
+          <input id="weather-location" type="text" placeholder="Enter location" value="Bangalore">
+          <button id="weather-btn" type="button">Get Weather</button>
+          <div id="weather-result" class="result"></div>
+        </div>
+      </article>
+      <article class="card">
+        <h3>Agent Client</h3>
+        <p>Connects to MCP servers and invokes tool-enabled LLM workflows.</p>
+      </article>
+    </section>
+
+    <div class="actions">
+      <a class="btn" href="index.html">Open Home</a>
+      <a class="btn secondary" href="https://github.com/Ajzel/mcp" target="_blank" rel="noreferrer">View Repository</a>
+    </div>
+
+    <footer>
+      Update this page with your real API routes and environment-specific links before production release.
+    </footer>
+  </main>
+  <script>
+    const API_BASE = "http://localhost:8080";
+
+    const mathA = document.getElementById("math-a");
+    const mathB = document.getElementById("math-b");
+    const mathResult = document.getElementById("math-result");
+    const weatherLocation = document.getElementById("weather-location");
+    const weatherResult = document.getElementById("weather-result");
+
+    async function askAgent(message) {
+      const res = await fetch(`${API_BASE}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+
+      const data = await res.json();
+      return data.answer ?? "";
+    }
+
+    document.getElementById("add-btn").addEventListener("click", async () => {
+      const a = Number(mathA.value);
+      const b = Number(mathB.value);
+      if (Number.isNaN(a) || Number.isNaN(b)) {
+        mathResult.textContent = "Enter valid numbers.";
+        return;
+      }
+
+      mathResult.textContent = "Loading...";
+      try {
+        const msg = `Add ${a} and ${b}. Return only the final number.`;
+        const answer = await askAgent(msg);
+        mathResult.textContent = answer;
+      } catch (err) {
+        mathResult.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    document.getElementById("multiply-btn").addEventListener("click", async () => {
+      const a = Number(mathA.value);
+      const b = Number(mathB.value);
+      if (Number.isNaN(a) || Number.isNaN(b)) {
+        mathResult.textContent = "Enter valid numbers.";
+        return;
+      }
+
+      mathResult.textContent = "Loading...";
+      try {
+        const msg = `Multiply ${a} and ${b}. Return only the final number.`;
+        const answer = await askAgent(msg);
+        mathResult.textContent = answer;
+      } catch (err) {
+        mathResult.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    document.getElementById("weather-btn").addEventListener("click", async () => {
+      const location = weatherLocation.value.trim();
+      if (!location) {
+        weatherResult.textContent = "Enter a location.";
+        return;
+      }
+
+      weatherResult.textContent = "Loading...";
+      try {
+        const msg = `Give a short weather update for ${location}.`;
+        const answer = await askAgent(msg);
+        weatherResult.textContent = answer;
+      } catch (err) {
+        weatherResult.textContent = `Error: ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
